@@ -1,0 +1,62 @@
+---
+- name: Slave- Check if database is standing by
+  stat:
+    path: '/var/lib/postgresql/12/main/backup_label.old'
+  register: backup_status
+
+- name: "Slave- Update postgresql config files"
+  become_user: postgres
+  blockinfile:
+    path: /etc/postgresql/12/main/postgresql.conf
+    create: yes
+    block: |
+      listen_addresses = 'localhost,{{ ansible_enp0s8.ipv4.address }}'
+      wal_level = hot_standby
+      archive_mode = on
+      archive_command = 'cd .'
+      max_wal_senders = 10
+      wal_keep_segments = 100
+      hot_standby = on
+  when: backup_status.stat.exists == False
+
+- name: "Slave- Update pg_hba config files"
+  blockinfile:
+    path: /etc/postgresql/12/main/pg_hba.conf
+    block: |
+      {% for host in groups['db_hosts'] %}
+      host    replication     replusr     {{ hostvars[host]['ansible_facts']['enp0s8']['ipv4']['address'] }}/32    md5
+      {% endfor %}
+  when: backup_status.stat.exists == False
+
+- name: "Slave- pgpass for non interactive logins to the other node"
+  become_user: postgres
+  blockinfile:
+    path: /var/lib/postgresql/.pgpass
+    create: yes
+    mode: 0600
+    block: |
+      # hostname:port:database:username:password
+      {% for host in groups['db_hosts'] %}
+      {{ hostvars[host]['inventory_hostname'] + ':5432:replication:' + repl_user + ':' + repl_passwd}}
+      {% endfor %}
+  when: backup_status.stat.exists == False
+
+- name: "Slave- Stop database"
+  systemd:
+    state: stopped
+    name: postgresql
+  when: backup_status.stat.exists == False
+
+- name: "Slave- Remove old data directory"
+  file:
+    state: absent
+    path: "/var/lib/postgresql/12/main/"
+  when: backup_status.stat.exists == False
+
+- name: "Slave- Initialize the slave database"
+  shell: "pg_basebackup -D /var/lib/postgresql/12/main -h {{ master_host }} -X stream -c fast -U {{ repl_user }} -w -R"
+  when: backup_status.stat.exists == False
+  become_user: postgres
+  notify: Restart database
+
+- meta: flush_handlers

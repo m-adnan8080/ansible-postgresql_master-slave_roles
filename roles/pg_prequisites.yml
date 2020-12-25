@@ -1,0 +1,17 @@
+---
+- name: "Common- Install PostgreSQL 12 packages"
+  package:
+    name:
+    - wget
+    - nano
+    - net-tools
+    - postgresql
+    - postgresql-12
+    - python3-psycopg2
+    state: present
+
+# - name: "Common- Enable database service on boot"
+#   systemd:
+#     name: postgresql
+#     state: started
+#     enabled: yes
