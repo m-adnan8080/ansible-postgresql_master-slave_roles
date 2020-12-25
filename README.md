@@ -16,12 +16,12 @@ vagrant box add ubuntu/focal64
 ## Usage
 First clone the repo 
 
-'git clone https://github.com/m-adnan8080/ansible-postgresql_master-slave.git'
+`git clone https://github.com/m-adnan8080/ansible-postgresql_master-slave.git`
 
 Change directory to ansible-postgresql_master-slave
 
-'''
+```
 cd ansible-postgresql_master-slave
 vagrant up
 ansible-playbook pg_setup.yml
-'''
+```
