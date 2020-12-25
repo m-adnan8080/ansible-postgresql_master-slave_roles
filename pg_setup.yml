@@ -9,19 +9,19 @@
   #   become: true
 
   - name: Execute prequisites on all hosts
-    import_tasks: roles/pg_prequisites.yml
+    import_tasks: tasks/pg_prequisites.yml
     when: inventory_hostname in groups['db_hosts']
     become: true
 
   - name: Configure master node
-    import_tasks: roles/pg_conf_master.yml
+    import_tasks: tasks/pg_conf_master.yml
     # vars:
     #   standby_status: "{{ standby_status }}"
     when: inventory_hostname in groups['db_master']
     become: true
 
   # - name: Configure slave nodes
-  #   import_tasks: roles/pg_conf_slave.yml
+  #   import_tasks: tasks/pg_conf_slave.yml
   #   when: inventory_hostname in groups['db_slaves']
   #   become: true
   #   vars:
