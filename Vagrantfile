@@ -29,13 +29,13 @@ Vagrant.configure("2") do |config|
     server.vm.network "private_network", ip: "192.168.100.11"
   end
 
-  # config.vm.define "slave" do |server|
-  #   server.vm.hostname = "slave.test"
-  #   server.vm.network "private_network", ip: "192.168.100.12"
-  # end
+  config.vm.define "slave" do |server|
+    server.vm.hostname = "slave.test"
+    server.vm.network "private_network", ip: "192.168.100.12"
+  end
 
-  # config.vm.define "slave2" do |server|
-  #   server.vm.hostname = "slave2.test"
-  #   server.vm.network "private_network", ip: "192.168.100.13"
-  # end
+  config.vm.define "slave2" do |server|
+    server.vm.hostname = "slave2.test"
+    server.vm.network "private_network", ip: "192.168.100.13"
+  end
 end

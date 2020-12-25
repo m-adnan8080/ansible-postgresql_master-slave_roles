@@ -1,22 +1,22 @@
 ---
-# - name: Master- Check if database is already initialized
-#   stat:
-#     path: '/var/lib/postgresql/12/main/PG_VERSION'
-#   register: init_status
+- name: Master- Check if database is already initialized
+  stat:
+    path: '/var/lib/postgresql/12/main/PG_VERSION'
+  register: init_status
 
-# - name: Master- Promote slave database to master
-#   become_user: postgres
-#   shell: "/usr/lib/postgresql/12/bin/pg_ctl promote -D /var/lib/postgresql/12/main"
-#   when: init_status.stat.exists == True and standby_status.stat.exists == True
+- name: Master- Promote slave database to master
+  become_user: postgres
+  shell: "/usr/lib/postgresql/12/bin/pg_ctl promote -D /var/lib/postgresql/12/main"
+  when: init_status.stat.exists == True and standby_status.stat.exists == True
 
-# - name: Master- Create replication user, set MD5-hashed password, grant privs
-#   become_user: postgres
-#   postgresql_user:
-#     name: replusr
-#     password: "{{ 'md5' + ((repl_passwd + repl_user) | hash('md5')) }}"
-#     role_attr_flags: REPLICATION
-#     priv: ALL
-#     db: postgres
+- name: Master- Create replication user, set MD5-hashed password, grant privs
+  become_user: postgres
+  postgresql_user:
+    name: replusr
+    password: "{{ 'md5' + ((repl_passwd + repl_user) | hash('md5')) }}"
+    role_attr_flags: REPLICATION
+    priv: ALL
+    db: postgres
   
 - name: Master- Update postgresql config file
   become: true
@@ -36,30 +36,30 @@
 
 - meta: flush_handlers
 
-# - name: Master- Enable replication user to login
-#   become: true
-#   become_user: postgres
-#   blockinfile:
-#     path: /etc/postgresql/12/main/pg_hba.conf
-#     block: |
-#       {% for host in groups['db_hosts'] %}
-#       host    replication     replusr     {{ hostvars[host]['ansible_facts']['enp0s8']['ipv4']['address'] }}/32    md5
-#       {% endfor %}
+- name: Master- Enable replication user to login
+  become: true
+  become_user: postgres
+  blockinfile:
+    path: /etc/postgresql/12/main/pg_hba.conf
+    block: |
+      {% for host in groups['db_hosts'] %}
+      host    replication     replusr     {{ hostvars[host]['ansible_facts']['enp0s8']['ipv4']['address'] }}/32    md5
+      {% endfor %}
 
-# - name: Master  - pgpass for non interactive logins to the other node
-#   become_user: postgres
-#   blockinfile:
-#     path: /var/lib/postgresql/.pgpass
-#     create: yes
-#     mode: 0600
-#     block: |
-#       # hostname:port:database:username:password
-#       {% for host in groups['db_hosts'] %}
-#       {{ hostvars[host]['inventory_hostname'] + ':5432:replication:' + repl_user + ':' + repl_passwd}}
-#       {% endfor %}
+- name: Master  - pgpass for non interactive logins to the other node
+  become_user: postgres
+  blockinfile:
+    path: /var/lib/postgresql/.pgpass
+    create: yes
+    mode: 0600
+    block: |
+      # hostname:port:database:username:password
+      {% for host in groups['db_hosts'] %}
+      {{ hostvars[host]['inventory_hostname'] + ':5432:replication:' + repl_user + ':' + repl_passwd}}
+      {% endfor %}
 
-# - name: Master- Restart database
-#   systemd:
-#     state: restarted
-#     name: postgresql
-#   when: init_status.stat.exists == False and standby_status.stat.exists == False
+- name: Master- Restart database
+  systemd:
+    state: restarted
+    name: postgresql
+  when: init_status.stat.exists == False and standby_status.stat.exists == False
