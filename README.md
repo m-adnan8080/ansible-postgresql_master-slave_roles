@@ -11,7 +11,7 @@ Below software must be installed on the machine to run this automation
 3. Ansible
 4. Git
 
-vagrant box add ubuntu/focal64
+[OPTIONAL] You can also download the Ubuntu 20.04 vagrant box with command `vagrant box add ubuntu/focal64`. If this step skipped then `vagrant up` command will first download vagrant box then create VM(s) from it.
 
 ## Usage
 First clone the repo 
