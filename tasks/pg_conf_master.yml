@@ -45,6 +45,7 @@
       {% for host in groups['db_hosts'] %}
       host    replication     replusr     {{ hostvars[host]['ansible_facts']['enp0s8']['ipv4']['address'] }}/32    md5
       {% endfor %}
+  notify: Restart database
 
 - name: Master  - pgpass for non interactive logins to the other node
   become_user: postgres
