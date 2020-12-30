@@ -1,57 +1,25 @@
 ---
 - hosts: db_hosts
+  become: true
 
   tasks:
   - name: Check if database is standing by
     stat:
       path: '/var/lib/postgresql/12/main/standby.signal'
     register: standby_status
-    become: true
+  - name: Check if database is standing by
+    stat:
+      path: '/var/lib/postgresql/12/main/standby.signal'
+    register: standby_status
+  roles:
+    - base
 
-  - name: Execute prequisites on all hosts
-    import_tasks: tasks/pg_prequisites.yml
-    when: inventory_hostname in groups['db_hosts']
-    become: true
+- hosts: db_master
+  become: true
+  roles:
+    - master
 
-  - name: Configure master node
-    import_tasks: tasks/pg_conf_master.yml
-    vars:
-      standby_status: "{{ standby_status }}"
-    when: inventory_hostname in groups['db_master']
-    become: true
-
-  - name: Configure slave nodes
-    import_tasks: tasks/pg_conf_slave.yml
-    when: inventory_hostname in groups['db_slaves']
-    become: true
-    vars:
-      master_host: "{{ groups.db_master[0] }}"
-
-  - name: Check replication status on master node
-    when: inventory_hostname in groups['db_master']
-    shell: |
-      sudo -u postgres psql -c "select * from pg_stat_replication;"
-    register: master_query_out
-
-  - debug:
-      var: master_query_out.stdout
-
-  - name: Check replication status on slave node(s)
-    when: inventory_hostname in groups['db_slaves']
-    shell: |
-      sudo -u postgres psql -c "select * from pg_stat_wal_receiver;"
-    register: slave_query_out
-
-  - debug:
-      var: slave_query_out.stdout
-
-  handlers:
-  - name: Restart Linux server
-    reboot:
-    become: true
-
-  - name: Restart database
-    systemd:
-      state: restarted
-      name: postgresql
-    become: true
+- hosts: db_slaves
+  become: true
+  roles:
+    - slave

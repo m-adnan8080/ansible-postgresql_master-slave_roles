@@ -1,5 +1,6 @@
 ---
-- name: "Common- Install PostgreSQL 12 packages"
+
+- name: "Install tools and PostgreSQL 12"
   package:
     name:
     - wget
@@ -9,8 +10,9 @@
     - postgresql-12
     - python3-psycopg2
     state: present
+    update_cache: true
 
-- name: "Common- Enable database service on boot"
+- name: "Enable PostgreSQL service on boot"
   systemd:
     name: postgresql
     state: started

@@ -1,14 +1,14 @@
 ---
-- name: Slave- Check if database is standing by
+
+- name: Check if database is standing by
   stat:
     path: '/var/lib/postgresql/12/main/backup_label.old'
   register: backup_status
 
-- name: "Slave- Update postgresql config files"
-  become_user: postgres
+- name: "Update postgresql config files"
   blockinfile:
     path: /etc/postgresql/12/main/postgresql.conf
-    create: yes
+    owner: postgres
     block: |
       listen_addresses = 'localhost,{{ ansible_enp0s8.ipv4.address }}'
       wal_level = hot_standby
@@ -19,21 +19,22 @@
       hot_standby = on
   when: backup_status.stat.exists == False
 
-- name: "Slave- Update pg_hba config files"
+- name: "Update pg_hba config files"
   blockinfile:
     path: /etc/postgresql/12/main/pg_hba.conf
+    owner: postgres
     block: |
       {% for host in groups['db_hosts'] %}
       host    replication     replusr     {{ hostvars[host]['ansible_facts']['enp0s8']['ipv4']['address'] }}/32    md5
       {% endfor %}
   when: backup_status.stat.exists == False
 
-- name: "Slave- pgpass for non interactive logins to the other node"
-  become_user: postgres
+- name: "pgpass for non interactive logins to the other node"
   blockinfile:
     path: /var/lib/postgresql/.pgpass
-    create: yes
+    owner: postgres
     mode: 0600
+    create: yes
     block: |
       # hostname:port:database:username:password
       {% for host in groups['db_hosts'] %}
@@ -41,22 +42,23 @@
       {% endfor %}
   when: backup_status.stat.exists == False
 
-- name: "Slave- Stop database"
+- name: "Stop database"
   systemd:
     state: stopped
     name: postgresql
   when: backup_status.stat.exists == False
 
-- name: "Slave- Remove old data directory"
+- name: "Remove old data directory"
   file:
     state: absent
     path: "/var/lib/postgresql/12/main/"
   when: backup_status.stat.exists == False
 
-- name: "Slave- Initialize the slave database"
-  shell: "pg_basebackup -D /var/lib/postgresql/12/main -h {{ master_host }} -X stream -c fast -U {{ repl_user }} -w -R"
+- name: "Initialize the slave database"
+  shell: "pg_basebackup -D /var/lib/postgresql/12/main -h {% for host in groups['db_master'] %}{{ hostvars[host]['ansible_facts']['enp0s8']['ipv4']['address'] }}{% endfor %} -X stream -c fast -U {{ repl_user }} -w -R"
   when: backup_status.stat.exists == False
   become_user: postgres
   notify: Restart database
 
 - meta: flush_handlers
+

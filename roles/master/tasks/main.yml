@@ -1,15 +1,16 @@
 ---
-- name: Master- Check if database is already initialized
+
+- name: Check if database is already initialized
   stat:
     path: '/var/lib/postgresql/12/main/PG_VERSION'
   register: init_status
 
-- name: Master- Promote slave database to master
+- name: Promote slave database to master
   become_user: postgres
   shell: "/usr/lib/postgresql/12/bin/pg_ctl promote -D /var/lib/postgresql/12/main"
   when: init_status.stat.exists == True and standby_status.stat.exists == True
 
-- name: Master- Create replication user, set MD5-hashed password, grant privs
+- name: Create replication user, set MD5-hashed password, grant privs
   become_user: postgres
   postgresql_user:
     name: replusr
@@ -18,12 +19,10 @@
     priv: ALL
     db: postgres
   
-- name: Master- Update postgresql config file
-  become: true
-  become_user: postgres
+- name: Update postgresql config file
   blockinfile:
     path: /etc/postgresql/12/main/postgresql.conf
-    create: yes
+    owner: postgres
     block: |
       listen_addresses = 'localhost,{{ ansible_enp0s8.ipv4.address }}'
       wal_level = hot_standby
@@ -36,21 +35,20 @@
 
 - meta: flush_handlers
 
-- name: Master- Enable replication user to login
-  become: true
-  become_user: postgres
+- name: Allow replication user in pg_hba.conf file to login 
   blockinfile:
     path: /etc/postgresql/12/main/pg_hba.conf
+    owner: postgres
     block: |
       {% for host in groups['db_hosts'] %}
       host    replication     replusr     {{ hostvars[host]['ansible_facts']['enp0s8']['ipv4']['address'] }}/32    md5
       {% endfor %}
   notify: Restart database
 
-- name: Master  - pgpass for non interactive logins to the other node
-  become_user: postgres
+- name: pgpass for non interactive logins to the other node
   blockinfile:
     path: /var/lib/postgresql/.pgpass
+    owner: postgres
     create: yes
     mode: 0600
     block: |
@@ -59,8 +57,9 @@
       {{ hostvars[host]['inventory_hostname'] + ':5432:replication:' + repl_user + ':' + repl_passwd}}
       {% endfor %}
 
-- name: Master- Restart database
+- name: Restart database
   systemd:
     state: restarted
     name: postgresql
   when: init_status.stat.exists == False and standby_status.stat.exists == False
+

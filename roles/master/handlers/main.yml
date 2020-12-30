@@ -1,0 +1,10 @@
+---
+- name: Restart Linux server
+  reboot:
+  become: true
+
+- name: Restart database
+  systemd:
+    state: restarted
+    name: postgresql
+  become: true
