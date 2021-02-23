@@ -7,10 +7,6 @@
     stat:
       path: '/var/lib/postgresql/12/main/standby.signal'
     register: standby_status
-  - name: Check if database is standing by
-    stat:
-      path: '/var/lib/postgresql/12/main/standby.signal'
-    register: standby_status
   roles:
     - base
 
